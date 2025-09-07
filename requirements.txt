@@ -1,0 +1,3 @@
+# Python dependencies for the contribution evaluation utility
+requests>=2.0.0
+
