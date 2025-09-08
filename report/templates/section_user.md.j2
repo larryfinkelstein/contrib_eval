@@ -1,0 +1,21 @@
+"""
+Markdown template for a single user section in the report.
+"""
+
+# {{ user.display_name or user.user_id }}
+
+- Involvement: **{{ evaluation.involvement }}**
+- Significance: **{{ evaluation.significance | round(2) }}**
+- Effectiveness: **{{ evaluation.effectiveness | round(2) }}**
+- Complexity: **{{ evaluation.complexity | round(2) }}**
+- Time Required: **{{ evaluation.time_required | round(2) }} hours**
+- Bugs and Fixes: **{{ evaluation.bugs_and_fixes }}**
+
+## Top Links
+{% if links %}
+{% for l in links %}
+- Linked issue {{ l.bug_issue_id }} (origin: {{ l.origin_issue_id }}) — {{ l.evidence }}
+{% endfor %}
+{% else %}
+_No linked issues found._
+{% endif %}

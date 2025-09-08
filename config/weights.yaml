@@ -1,0 +1,55 @@
+# Metric weights used by scoring.metrics.compute_weighted_score
+# Tweak these to change the relative importance of each metric.
+#
+# Notes:
+# - status_instability_avg_flips penalizes issues that change status frequently
+#   (higher value = more flips). Typical range: 0 (ignore) to -2.0 (strong penalty).
+# - time_required is adjusted per-user by time normalization factors; keep its weight
+#   relative to significance/effectiveness. Increase if you want to emphasize time spent.
+
+involvement: 1.0
+significance: 2.0
+effectiveness: 1.5
+complexity: 1.0
+time_required: 0.5
+bugs_and_fixes: 2.0
+bug_fallout: -1.0
+# new metric: average number of status flips per event (instability)
+status_instability_avg_flips: -1.0
+
+# Presets
+# The following presets are provided as starting points. To use a preset, copy the
+# mapping under the preset into the top-level file (replace the above values), or
+# load it programmatically and merge it into the weight map used by compute_weighted_score.
+presets:
+  balanced:
+    involvement: 1.0
+    significance: 2.0
+    effectiveness: 1.5
+    complexity: 1.0
+    time_required: 0.5
+    bugs_and_fixes: 2.0
+    bug_fallout: -1.0
+    status_instability_avg_flips: -1.0
+
+  time_focused:
+    # Emphasize time spent; useful for resource accounting scenarios
+    involvement: 0.8
+    significance: 1.5
+    effectiveness: 1.0
+    complexity: 0.8
+    time_required: 1.5
+    bugs_and_fixes: 1.0
+    bug_fallout: -0.5
+    status_instability_avg_flips: -0.5
+
+  quality_focused:
+    # Emphasize defects and stability
+    involvement: 0.8
+    significance: 2.0
+    effectiveness: 1.2
+    complexity: 1.0
+    time_required: 0.3
+    bugs_and_fixes: 3.0
+    bug_fallout: -2.0
+    status_instability_avg_flips: -1.5

@@ -10,6 +10,7 @@ This Python utility evaluates the contributions of an individual team member ove
 - Designed for a single Jira project, Confluence space, and GitHub organization.
 - Date range can be specified for monthly or quarterly evaluations.
 - Includes robust unit tests.
+- **Persistent SQLite cache** to speed up repeated queries.
 
 ## Setup
 
@@ -46,8 +47,104 @@ Optional arguments (default values shown):
 - `--jira_token` (or set `JIRA_TOKEN`)
 - `--confluence_token` (or set `CONFLUENCE_TOKEN`)
 - `--github_token` (or set `GITHUB_TOKEN`)
+- `--cache` (default: `True`)
 
 If a token is not provided via CLI or environment, you will be prompted interactively.
+
+### Cache Usage
+
+The utility supports a persistent SQLite cache to speed up data retrieval. Provide a file path to enable caching; omit the flag to disable it.
+
+#### CLI Example
+```sh
+# Enable persistent cache stored at ./cache.db
+python cli.py --user <username> --start <YYYY-MM-DD> --end <YYYY-MM-DD> --cache ./cache.db --output html --out-file ./out/report.html
+
+# Disable caching by omitting the --cache flag
+python cli.py --user <username> --start <YYYY-MM-DD> --end <YYYY-MM-DD>
+```
+
+#### Programmatic Example
+```python
+from storage.cache import Cache
+from ingest.jira import JiraClient
+from ingest.confluence import ConfluenceClient
+from ingest.github import GitHubClient
+
+cache = Cache('cache.db')  # persistent SQLite cache
+jira = JiraClient(token, project_key, cache=cache)
+confluence = ConfluenceClient(token, space_key, cache=cache)
+github = GitHubClient(token, org, cache=cache)
+```
+
+## Programmatic Rendering (public API)
+
+When rendering HTML programmatically, prefer the public convenience function render_html exported by report.renderer. This wrapper uses the Jinja2 template when available and falls back to a simple HTML generator.
+
+Example:
+
+```python
+from scoring.metrics import compute_metrics
+from report.renderer import render_html
+
+# given a list of normalized ContributionEvent objects `events`:
+metrics_res = compute_metrics(events)
+evaluation = metrics_res.get('evaluation_result')
+metrics = metrics_res.get('metrics')
+
+html = render_html(result=evaluation, metrics=metrics)
+with open('out/report.html', 'w', encoding='utf-8') as f:
+    f.write(html)
+```
+
+Note: render_html is the recommended public API for programmatic HTML rendering. If you need Markdown or CSV output programmatically, use render_markdown() and render_csv() in report.renderer.
+
++Tuning presets (programmatic usage)
++
++The configuration file config/weights.yaml includes a presets section (balanced, time_focused, quality_focused). You can load a named preset programmatically and obtain a merged weights mapping using the helper functions in scoring.utils.
++
++Example:
++
++```python
++from scoring.utils import list_presets, load_preset
++
++# show available presets
++print(list_presets())
++
++# load a merged preset (base weights merged with the named preset)
++weights = load_preset('quality_focused')
++
++# now pass `weights` to compute_weighted_score(metrics, weights)
++```
++
++Notes:
++- load_preset(...) reads config/weights.yaml and requires PyYAML to be installed to read presets; if PyYAML is not available, use load_weights() and manually edit/merge the YAML.
++- load_preset returns the base weights merged with the preset overrides so you can pass the result directly to the scoring functions.
+
+Additional programmatic helpers
+
+If you prefer Markdown or CSV output (for embedding in other systems, email bodies, or quick snapshots), the renderer exposes two convenience functions:
+
+- render_markdown(result: EvaluationResult) -> str: returns a Markdown-formatted summary suitable for inclusion in README snippets or Markdown-capable viewers.
+- render_csv(result: EvaluationResult) -> str: returns CSV text (header + single row) useful for importing into spreadsheets or reporting pipelines.
+
+Examples:
+
+```python
+from scoring.metrics import compute_metrics
+from report.renderer import render_markdown, render_csv
+
+metrics_res = compute_metrics(events)
+evaluation = metrics_res.get('evaluation_result')
+
+md = render_markdown(evaluation)
+print(md)  # safe to include in Markdown files or previews
+
+csv = render_csv(evaluation)
+print(csv)  # header + row; can be written to a .csv file
+```
+
+These helpers are lightweight and do not require Jinja2 or any template files.
 
 ## Evaluation Criteria
 
@@ -119,4 +216,3 @@ Tests cover:
 
 ## Contact
 For questions or feature requests, please open an issue or contact the maintainer.
-

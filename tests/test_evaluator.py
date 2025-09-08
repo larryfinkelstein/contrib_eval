@@ -3,56 +3,60 @@ Unit tests for the evaluator logic in the contribution evaluation utility.
 Covers edge cases and typical scenarios for Jira, Confluence, and GitHub data aggregation.
 """
 import unittest
-from evaluator import evaluate_contributions
-from models import EvaluationResult
+from scoring.metrics import (
+    convert_jira_issues_to_events,
+    convert_confluence_pages_to_events,
+    convert_github_items_to_events,
+    compute_metrics,
+)
+from correlate.models import EvaluationResult
+
 
 class MockJiraClient:
     def __init__(self, *args, **kwargs):
-        # This mock constructor is intentionally left empty.
-        # It is used for patching in unit tests and does not require initialization logic.
         pass
+
     def get_user_issues(self, user, start, end):
         return []
 
+
 class MockConfluenceClient:
     def __init__(self, *args, **kwargs):
-        # This mock constructor is intentionally left empty.
-        # It is used for patching in unit tests and does not require initialization logic.
         pass
+
     def get_user_pages(self, user, start, end):
         return []
 
+
 class MockGitHubClient:
     def __init__(self, *args, **kwargs):
-        # This mock constructor is intentionally left empty.
-        # It is used for patching in unit tests and does not require initialization logic.
         pass
+
     def get_user_contributions(self, user, start, end):
         return []
 
-class TestEvaluator(unittest.TestCase):
-    def setUp(self):
-        # Patch evaluator to use mock clients
-        import evaluator
-        evaluator.JiraClient = MockJiraClient
-        evaluator.ConfluenceClient = MockConfluenceClient
-        evaluator.GitHubClient = MockGitHubClient
 
+class TestEvaluator(unittest.TestCase):
     def test_empty_contributions(self):
         """
         Test evaluation with no contributions (edge case).
         """
-        result = evaluate_contributions(
-            user="testuser",
-            start_date="2025-01-01",
-            end_date="2025-01-31",
-            jira_project="TEST",
-            confluence_space="SPACE",
-            github_org="org",
-            jira_token="dummy",
-            confluence_token="dummy",
-            github_token="dummy"
+        jira = MockJiraClient()
+        conf = MockConfluenceClient()
+        gh = MockGitHubClient()
+
+        jira_raw = jira.get_user_issues("testuser", "2025-01-01", "2025-01-31")
+        conf_raw = conf.get_user_pages("testuser", "2025-01-01", "2025-01-31")
+        gh_raw = gh.get_user_contributions("testuser", "2025-01-01", "2025-01-31")
+
+        events = (
+            convert_jira_issues_to_events(jira_raw)
+            + convert_confluence_pages_to_events(conf_raw)
+            + convert_github_items_to_events(gh_raw)
         )
+        res = compute_metrics(events)
+        result = res.get('evaluation_result')
+
         self.assertIsInstance(result, EvaluationResult)
         self.assertEqual(result.involvement, 0)
         self.assertEqual(result.significance, 0)
@@ -65,11 +69,7 @@ class TestEvaluator(unittest.TestCase):
         """
         Test evaluation with mixed contributions from all sources.
         """
-        class MockJiraClient:
-            def __init__(self, *args, **kwargs):
-                # This mock constructor is intentionally left empty.
-                # It is used for patching in unit tests and does not require initialization logic.
-                pass
+        class MockJiraClientLocal:
             def get_user_issues(self, user, start, end):
                 return [{
                     'fields': {
@@ -79,43 +79,35 @@ class TestEvaluator(unittest.TestCase):
                         'timespent': 7200
                     }
                 }]
-        class MockConfluenceClient:
-            def __init__(self, *args, **kwargs):
-                # This mock constructor is intentionally left empty.
-                # It is used for patching in unit tests and does not require initialization logic.
-                pass
+
+        class MockConfluenceClientLocal:
             def get_user_pages(self, user, start, end):
                 return [{
                     'title': 'API Documentation',
                     'history': {'createdDate': '2025-01-15', 'createdBy': {'username': user}},
                     'version': {'when': '2025-01-15'}
                 }]
-        class MockGitHubClient:
-            def __init__(self, *args, **kwargs):
-                # This mock constructor is intentionally left empty.
-                # It is used for patching in unit tests and does not require initialization logic.
-                pass
+
+        class MockGitHubClientLocal:
             def get_user_contributions(self, user, start, end):
                 return [{
                     'pull_request': True,
                     'title': 'Add OAuth support',
                     'created_at': '2025-01-20'
                 }]
-        import evaluator
-        evaluator.JiraClient = MockJiraClient
-        evaluator.ConfluenceClient = MockConfluenceClient
-        evaluator.GitHubClient = MockGitHubClient
-        result = evaluate_contributions(
-            user="testuser",
-            start_date="2025-01-01",
-            end_date="2025-01-31",
-            jira_project="TEST",
-            confluence_space="SPACE",
-            github_org="org",
-            jira_token="dummy",
-            confluence_token="dummy",
-            github_token="dummy"
+
+        jira = MockJiraClientLocal()
+        conf = MockConfluenceClientLocal()
+        gh = MockGitHubClientLocal()
+
+        events = (
+            convert_jira_issues_to_events(jira.get_user_issues(None, None, None))
+            + convert_confluence_pages_to_events(conf.get_user_pages(None, None, None))
+            + convert_github_items_to_events(gh.get_user_contributions(None, None, None))
         )
+        res = compute_metrics(events)
+        result = res.get('evaluation_result')
+
         self.assertIsInstance(result, EvaluationResult)
         self.assertEqual(result.involvement, 3)
         self.assertGreater(result.significance, 0)
@@ -127,11 +119,7 @@ class TestEvaluator(unittest.TestCase):
         """
         Test evaluation with high complexity and multiple bugs.
         """
-        class MockJiraClient:
-            def __init__(self, *args, **kwargs):
-                # This mock constructor is intentionally left empty.
-                # It is used for patching in unit tests and does not require initialization logic.
-                pass
+        class MockJiraClientLocal:
             def get_user_issues(self, user, start, end):
                 return [{
                     'fields': {
@@ -148,44 +136,37 @@ class TestEvaluator(unittest.TestCase):
                         'timespent': 3600
                     }
                 }]
-        class MockConfluenceClient:
-            def __init__(self, *args, **kwargs):
-                # This mock constructor is intentionally left empty.
-                # It is used for patching in unit tests and does not require initialization logic.
-                pass
+
+        class MockConfluenceClientLocal:
             def get_user_pages(self, user, start, end):
                 return []
-        class MockGitHubClient:
-            def __init__(self, *args, **kwargs):
-                # This mock constructor is intentionally left empty.
-                # It is used for patching in unit tests and does not require initialization logic.
-                pass
+
+        class MockGitHubClientLocal:
             def get_user_contributions(self, user, start, end):
                 return [{
                     'issue': True,
                     'title': 'Bug: payment not processed',
                     'created_at': '2025-01-10'
                 }]
-        import evaluator
-        evaluator.JiraClient = MockJiraClient
-        evaluator.ConfluenceClient = MockConfluenceClient
-        evaluator.GitHubClient = MockGitHubClient
-        result = evaluate_contributions(
-            user="testuser",
-            start_date="2025-01-01",
-            end_date="2025-01-31",
-            jira_project="TEST",
-            confluence_space="SPACE",
-            github_org="org",
-            jira_token="dummy",
-            confluence_token="dummy",
-            github_token="dummy"
+
+        jira = MockJiraClientLocal()
+        conf = MockConfluenceClientLocal()
+        gh = MockGitHubClientLocal()
+
+        events = (
+            convert_jira_issues_to_events(jira.get_user_issues(None, None, None))
+            + convert_confluence_pages_to_events(conf.get_user_pages(None, None, None))
+            + convert_github_items_to_events(gh.get_user_contributions(None, None, None))
         )
+        res = compute_metrics(events)
+        result = res.get('evaluation_result')
+
         self.assertIsInstance(result, EvaluationResult)
         self.assertEqual(result.involvement, 3)
         self.assertGreaterEqual(result.bugs_and_fixes, 2)
         self.assertGreaterEqual(result.complexity, 2)
         self.assertGreaterEqual(result.time_required, 5)
+
 
 if __name__ == "__main__":
     unittest.main()

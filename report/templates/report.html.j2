@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Contribution Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    .summary { border: 1px solid #ddd; padding: 1rem; border-radius: 6px; }
+    .metric { margin: 0.25rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Contribution Summary</h1>
+  <div class="summary">
+    <h2>User Summary</h2>
+    <div class="metric"><strong>Involvement:</strong> {{ evaluation.involvement }}</div>
+    <div class="metric"><strong>Significance:</strong> {{ evaluation.significance }}</div>
+    <div class="metric"><strong>Effectiveness:</strong> {{ evaluation.effectiveness }}</div>
+    <div class="metric"><strong>Complexity:</strong> {{ evaluation.complexity }}</div>
+    <div class="metric"><strong>Time Required:</strong> {{ evaluation.time_required }} hours</div>
+    <div class="metric"><strong>Bugs and Fixes:</strong> {{ evaluation.bugs_and_fixes }}</div>
+  </div>
+  {% if metrics %}
+  <h3>Raw Metrics</h3>
+  <pre>{{ metrics | tojson(indent=2) }}</pre>
+  {% endif %}
+</body>
+</html>
