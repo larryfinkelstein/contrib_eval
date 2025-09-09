@@ -1,6 +1,7 @@
 import unittest
 from normalize.util import normalize_user, normalize_issue
 
+
 class TestNormalize(unittest.TestCase):
     def test_normalize_user_minimal(self):
         raw = {'accountId': 'u123', 'displayName': 'Alice', 'emailAddress': 'a@example.com', 'login': 'alice'}
@@ -19,8 +20,8 @@ class TestNormalize(unittest.TestCase):
                 'issuetype': {'name': 'Bug'},
                 'assignee': {'accountId': 'u123'},
                 'created': '2025-01-01',
-                'resolutiondate': '2025-01-02'
-            }
+                'resolutiondate': '2025-01-02',
+            },
         }
         issue = normalize_issue(raw)
         self.assertEqual(issue.issue_id, '100')
@@ -29,6 +30,6 @@ class TestNormalize(unittest.TestCase):
         self.assertEqual(issue.type, 'Bug')
         self.assertIn('u123', issue.assignees)
 
+
 if __name__ == '__main__':
     unittest.main()
-

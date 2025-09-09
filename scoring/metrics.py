@@ -2,6 +2,7 @@
 Scoring metrics conversion utilities.
 Converts raw Jira/Confluence/GitHub payloads into normalized ContributionEvent objects.
 """
+
 from typing import List, Dict, Any
 from normalize.models import ContributionEvent
 from correlate.models import EvaluationResult
@@ -35,7 +36,7 @@ def _extract_status_history_from_issue(issue: Dict[str, Any]) -> List[str]:
         changelog = issue.get('changelog') or {}
         histories = changelog.get('histories', []) if isinstance(changelog, dict) else []
         for h in histories:
-            for it in (h.get('items') or []):
+            for it in h.get('items') or []:
                 if (it.get('field') or '').lower() == 'status':
                     status_history.append(it.get('toString') or it.get('to') or '')
     except Exception:
@@ -87,12 +88,7 @@ def convert_confluence_pages_to_events(pages: List[Dict[str, Any]]) -> List[Cont
         event_id = page.get('id') or title
         actor = (history.get('createdBy') or {}).get('accountId') or (history.get('createdBy') or {}).get('username') or ''
         targets = {'page_id': page.get('id')}
-        metadata = {
-            'description': title,
-            'complexity': 2,
-            'time_spent': 0.5,
-            'bugs_reported': 0
-        }
+        metadata = {'description': title, 'complexity': 2, 'time_spent': 0.5, 'bugs_reported': 0}
         events.append(ContributionEvent(str(event_id), 'confluence', 'page_create', created, actor or '', targets, metadata))
     return events
 
@@ -108,13 +104,7 @@ def _github_event_from_item(item: Dict[str, Any]) -> ContributionEvent:
     time_spent = item.get('time_spent', 0.0)
     bugs_reported = 1 if 'bug' in title.lower() else 0
     targets = _build_github_targets(item)
-    metadata = {
-        'description': title,
-        'complexity': complexity,
-        'time_spent': time_spent,
-        'bugs_reported': bugs_reported,
-        'is_pr': is_pr
-    }
+    metadata = {'description': title, 'complexity': complexity, 'time_spent': time_spent, 'bugs_reported': bugs_reported, 'is_pr': is_pr}
     return ContributionEvent(str(event_id), 'github', event_type, created, actor or '', targets, metadata)
 
 
@@ -149,7 +139,7 @@ def compute_metrics(events: List[ContributionEvent]) -> dict:
     # basic aggregates
     involvement = len(events)
     if involvement == 0:
-        eval_result = EvaluationResult(0,0,0,0,0,0)
+        eval_result = EvaluationResult(0, 0, 0, 0, 0, 0)
         weights = load_weights()
         return {'metrics': {}, 'score': 0.0, 'weights': weights, 'evaluation_result': eval_result}
 
@@ -254,4 +244,3 @@ def _accumulate_event_metrics(events: List[ContributionEvent]):
         flips = max(0, len(sh) - 1)
         status_flips_total += flips
     return sig_total, eff_success, complexity_total, per_user_time, bugs_and_fixes, status_flips_total
-

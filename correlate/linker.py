@@ -5,6 +5,7 @@ Simple, dependency-free heuristics:
 - key in PR/commit titles
 - fallback: look for numeric proximity (TODO)
 """
+
 import re
 from typing import List, Dict, Optional
 from normalize.models import BugLink
@@ -65,8 +66,7 @@ def event_links(ev: Dict, known_keys: set, key_pattern: str) -> List[BugLink]:
     if not candidates:
         return []
     origin = derive_origin(ev)
-    return [BugLink(bug_issue_id=bid, origin_issue_id=origin, evidence=evidence)
-            for bid, evidence in candidates.items()]
+    return [BugLink(bug_issue_id=bid, origin_issue_id=origin, evidence=evidence) for bid, evidence in candidates.items()]
 
 
 def link_events_to_issues(events: List[Dict], issues: List[Dict], key_pattern: Optional[str] = None) -> List[BugLink]:

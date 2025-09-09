@@ -4,10 +4,12 @@ Data models for contribution records and evaluation results.
 
 # Removed unused Contribution class (normalize.models.ContributionEvent is the canonical event model).
 
+
 class EvaluationResult:
     """
     Represents the evaluation summary for a user.
     """
+
     def __init__(self, involvement: float, significance: float, effectiveness: float, complexity: float, time_required: float, bugs_and_fixes: int):
         self.involvement = involvement
         self.significance = significance

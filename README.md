@@ -216,3 +216,76 @@ Tests cover:
 
 ## Contact
 For questions or feature requests, please open an issue or contact the maintainer.
+
+## Multi-user exports / CI & tests note
+
+A multi-user export path was added to the CLI. You can render a multi-user report from a JSON users file via the `--users-file` and optional `--summary-file` flags. To write HTML, Markdown, CSV and JSON exports in one go, use the `--export-all` flag and provide an `--out-file` base name:
+
+```sh
+python cli.py --start 2025-01-01 --end 2025-01-31 --user dummy --users-file ./users.json --export-all --out-file ./out/report_multi
+```
+
+The project includes a small CLI integration test (tests/test_cli_integration.py) that exercises this multi-user export path by invoking the CLI entry point (`cli.main`) with a temporary users file.
+
+Continuous integration (GitHub Actions) is configured to run the test suite and generate a coverage report on pushes and pull requests (see .github/workflows/ci.yml).
+
+If you need to reproduce coverage locally, install the test extras and run:
+
+```sh
+pip install pytest pytest-cov
+pytest --maxfail=1 -q --disable-warnings --cov=report --cov-report=html:htmlcov
+```
+
+This will write HTML coverage into the htmlcov/ directory.
+
+[![codecov](https://codecov.io/gh/larryf1/contrib_eval/branch/main/graph/badge.svg)](https://codecov.io/gh/larryf1/contrib_eval)
+
+Note: if your repo is private you may need to provide a Codecov token. Add it to GitHub Secrets as CODECOV_TOKEN and the CI action will use it. The CI workflow uploads coverage.xml to Codecov and publishes an HTML report as an artifact.
+
+Lint configuration
+
+This repository includes lint configuration to make CI results consistent:
+- pyproject.toml (ruff/black settings)
+- .flake8 (flake8 settings)
+
+## Aggregating multiple users from sources (--user-list-file)
+
+In addition to rendering a provided users JSON file (`--users-file`) which contains per-user evaluation objects, the CLI supports aggregating events for a list of user IDs fetched from the configured data sources (Jira, Confluence, GitHub).
+
+- `--users-file` expects a JSON array of user objects (display_name, evaluation, links) and will render reports for those entries directly.
+- `--user-list-file` expects a JSON array of user IDs (strings). The CLI will fetch each user's events from Jira/Confluence/GitHub, normalize and aggregate them, compute metrics for the combined set, and render a multi-user HTML report.
+
+Examples
+
+Render a provided users file (user objects with evaluations):
+```sh
+python cli.py \
+  --start 2025-01-01 --end 2025-01-31 \
+  --user dummy \
+  --users-file ./users.json \
+  --export-all --out-file ./out/report_multi \
+  --jira_project MCLD --confluence_space SMARTINT --github_org org \
+  --jira_token $JIRA_TOKEN --confluence_token $CONFLUENCE_TOKEN --github_token $GITHUB_TOKEN
+```
+
+Aggregate events for a list of user IDs and produce a combined report:
+```sh
+python cli.py \
+  --start 2025-01-01 --end 2025-01-31 \
+  --user dummy \
+  --user-list-file ./user_ids.json \
+  --out-file ./out/aggregated_report.html \
+  --jira_project MCLD --confluence_space SMARTINT --github_org org \
+  --jira_token $JIRA_TOKEN --confluence_token $CONFLUENCE_TOKEN --github_token $GITHUB_TOKEN
+```
+
+Demo script
+
+A convenience demo script is provided that demonstrates reading a users JSON file and writing a combined multi-user HTML report:
+
+- demo_render_users_file.py — reads `demo_users.json` (creates a sample if missing) and writes `demo_report_users_file.html`.
+
+Notes
+
+- The aggregation path (`--user-list-file`) fetches data live from the configured APIs, so API tokens and network access are required.
+- The renderer will use the Jinja2 templates (report/templates/report.html.j2 and section_user.md.j2) when available; install Jinja2 with `pip install jinja2` to get templated HTML/Markdown output.

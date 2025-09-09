@@ -184,32 +184,148 @@ def _load_json_file(path: str, description: str):
         return None
 
 
-def _maybe_render_multi_user(args) -> bool:
-    """If users-file provided, load data and render multi-user report. Returns True if rendering/exit occurred."""
-    if not args.users_file:
-        return False
+def _render_users_report(fmt_name: str, users, summary, start: str, end: str) -> str:
+    """Render the users list for the given format using a common context.
 
-    users = _load_json_file(args.users_file, 'users file')
-    if users is None:
-        return True
-
-    summary = None
-    if args.summary_file:
-        summary = _load_json_file(args.summary_file, 'summary file')
-        if summary is None:
-            return True
-
-    fmt = (args.output or 'html').lower()
-    rendered = render(
+    Extracted to reduce cognitive complexity in _maybe_render_multi_user.
+    """
+    return render(
         result=None,
-        fmt=fmt,
+        fmt=fmt_name,
         metrics=(summary.get('metrics') if summary else None),
         users=users,
         summary=summary,
         generated_at=datetime.now(timezone.utc).isoformat(),
-        scope=f"{args.start} to {args.end}",
+        scope=f"{start} to {end}",
     )
-    write_output(fmt, rendered, args)
+
+
+def _write_report_file(path_base: str, ext: str, content: str, open_html: bool = False):
+    """Write the rendered content to a file and optionally open HTML in the browser.
+
+    Extracted to reduce cognitive complexity in _maybe_render_multi_user.
+    """
+    out_path = path_base if path_base.lower().endswith(f".{ext}") else f"{path_base}.{ext}"
+    out_dir = os.path.dirname(out_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    # newline='' is safe for CSV on Windows and harmless for other formats
+    with open(out_path, 'w', encoding='utf-8', newline='') as fh:
+        fh.write(content)
+    print(f"Wrote report to {out_path}")
+    if open_html:
+        try:
+            _open_file_in_browser(out_path)
+        except Exception:
+            print('Failed to open browser automatically; file saved at', out_path)
+
+
+def _process_users_file(args) -> bool:
+    """Load users and optional summary, render and write reports per args.
+
+    Returns True if any output file was written, False otherwise.
+    """
+    users = _load_json_file(args.users_file, 'users file')
+    if users is None:
+        return False
+
+    summary = _load_json_file(args.summary_file, 'summary file') if args.summary_file else None
+    if args.summary_file and summary is None:
+        return False
+
+    fmt = (args.output or 'html').lower()
+
+    export_all = bool(getattr(args, 'export_all', False))
+    formats = ('html', 'md', 'csv', 'json') if export_all else (fmt,)
+
+    base = args.out_file.strip() or f"contrib_report_multi_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}" if export_all else None
+
+    wrote_any = False
+    for ffmt in formats:
+        content = _render_users_report(ffmt, users, summary, args.start, args.end)
+        if export_all:
+            _write_report_file(base, ffmt, content, open_html=(ffmt == 'html' and args.open))
+            wrote_any = True
+        else:
+            # single-format: delegate to existing write_output for consistency
+            write_output(fmt, content, args)
+            wrote_any = True
+            break
+
+    return wrote_any
+
+
+def _aggregate_users_from_file(args, cache) -> bool:
+    """Load user IDs from the specified file, aggregate evaluations for each user,
+    and render a multi-user report.
+    """
+    user_ids = _load_json_file(args.user_list_file, 'user list file')
+    if user_ids is None or not isinstance(user_ids, list):
+        print(f"Invalid user list file {args.user_list_file}; expected an array of user IDs.")
+        return False
+
+    # instantiate clients once and reuse for all users
+    jira = JiraClient(args.jira_token, args.jira_project, cache=cache)
+    confluence = ConfluenceClient(args.confluence_token, args.confluence_space, cache=cache)
+    github = GitHubClient(args.github_token, args.github_org)
+
+    aggregated_events = []
+    for uid in user_ids:
+        try:
+            jira_raw = jira.get_user_issues(uid, args.start, args.end)
+            conf_raw = (
+                confluence.get_user_pages(args.start, args.end, user=uid)
+                if hasattr(confluence, 'get_user_pages')
+                else confluence.get_user_pages(args.start, args.end)
+            )
+            gh_raw = github.get_user_contributions(uid, args.start, args.end)
+
+            jira_events = convert_jira_issues_to_events(jira_raw)
+            conf_events = convert_confluence_pages_to_events(conf_raw)
+            gh_events = convert_github_items_to_events(gh_raw)
+
+            aggregated_events.extend(jira_events)
+            aggregated_events.extend(conf_events)
+            aggregated_events.extend(gh_events)
+        except Exception as exc:
+            print(f"Warning: failed to fetch events for user {uid}: {exc}")
+
+    if not aggregated_events:
+        print("No events aggregated for provided users.")
+        return False
+
+    metrics_res = compute_metrics(aggregated_events)
+    summary = {'metrics': metrics_res.get('metrics'), 'score': metrics_res.get('score')}
+    generated_at = datetime.now(timezone.utc).isoformat()
+    scope = f"{args.start} to {args.end}"
+
+    # produce multi-user report using renderer template when available
+    rendered = render(
+        result=None, fmt='html', metrics=summary['metrics'], users=[{'user_id': u} for u in user_ids], summary=summary, generated_at=generated_at, scope=scope
+    )
+    out_path = args.out_file.strip() or f"contrib_report_aggregated_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.html"
+    with open(out_path, 'w', encoding='utf-8') as fh:
+        fh.write(rendered)
+    print(f"Wrote aggregated report to {out_path}")
+    if args.open:
+        try:
+            _open_file_in_browser(out_path)
+        except Exception:
+            pass
+    return True
+
+
+def _maybe_render_multi_user(args) -> bool:
+    """If users-file provided, process it and return True to exit early; otherwise return False.
+
+    This wrapper delegates to _process_users_file to keep complexity low while preserving
+    existing CLI behavior (always exit early when users-file is provided).
+    """
+    if not args.users_file:
+        return False
+    # process users file (result is informational only); always return True to signal the CLI
+    # should exit early when a users-file was provided (preserves prior behavior)
+    _process_users_file(args)
     return True
 
 
@@ -242,6 +358,8 @@ def main():
     parser.add_argument("--force", action="store_true", help="Force actions without confirmation (use with --cache-clear or --cache-remove)")
     parser.add_argument("--users-file", type=str, default="", help="Path to JSON file containing users list to render multi-user report")
     parser.add_argument("--summary-file", type=str, default="", help="Path to JSON file containing summary object (optional)")
+    parser.add_argument("--export-all", action="store_true", help="When rendering a users-file, export HTML, MD, CSV and JSON copies automatically")
+    parser.add_argument("--user-list-file", type=str, default="", help="Path to JSON file containing an array of user ids to aggregate from sources")
     args = parser.parse_args()
 
     # Apply runtime retry/backoff configuration (CLI flags take precedence over environment variables)
@@ -260,7 +378,12 @@ def main():
         return
 
     try:
-        # If multi-user rendering was requested, handle it and exit early
+        # If a user-list-file was provided, aggregate evaluations for those users and render a multi-user report
+        if getattr(args, 'user_list_file', ''):
+            if _aggregate_users_from_file(args, cache):
+                return
+
+        # If multi-user rendering was requested via users-file, handle it and exit early
         if _maybe_render_multi_user(args):
             return
 

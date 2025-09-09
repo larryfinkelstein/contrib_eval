@@ -2,6 +2,7 @@
 Scoring utility functions.
 Provides weight loading and aggregation helpers used by scoring.metrics.
 """
+
 from typing import Dict, Any, Optional
 import os
 import importlib.util
@@ -36,6 +37,7 @@ def load_weights(path: Optional[str] = None) -> Dict[str, float]:
         try:
             if importlib.util.find_spec('yaml') is not None:
                 import yaml
+
                 with open(path, 'r', encoding='utf-8') as f:
                     data = yaml.safe_load(f) or {}
                     return {k: float(data.get(k, DEFAULT_WEIGHTS.get(k, 1.0))) for k in DEFAULT_WEIGHTS.keys()}
@@ -59,6 +61,7 @@ def compute_weighted_score(metrics: Dict[str, Any], weights: Dict[str, float]) -
 
 # --- New helpers for time normalization and smoothing ---
 
+
 def compute_user_time_factors(events: list) -> Dict[str, float]:
     """
     Compute normalization factors per user so that users with unusually high or low
@@ -68,6 +71,7 @@ def compute_user_time_factors(events: list) -> Dict[str, float]:
     The factor is computed as: global_avg_time_per_event / user_avg_time_per_event
     with safety clamps to avoid extreme scaling (min 0.5, max 2.0).
     """
+
     # helper to aggregate per-user time and counts
     def _aggregate_user_times(events_list: list):
         total_time = 0.0
@@ -148,6 +152,7 @@ def load_preset(preset_name: str, path: Optional[str] = None) -> Dict[str, float
         if importlib.util.find_spec('yaml') is None:
             raise ValueError('PyYAML not installed; cannot load presets from YAML')
         import yaml
+
         with open(path, 'r', encoding='utf-8') as f:
             doc = yaml.safe_load(f) or {}
     except Exception as ex:
@@ -160,7 +165,7 @@ def load_preset(preset_name: str, path: Optional[str] = None) -> Dict[str, float
     preset_map = presets.get(preset_name) or {}
     # merge: preset overrides base
     merged = base.copy()
-    for k, v in (preset_map.items() if isinstance(preset_map, dict) else []):
+    for k, v in preset_map.items() if isinstance(preset_map, dict) else []:
         try:
             merged[k] = float(v)
         except Exception:
@@ -178,6 +183,7 @@ def list_presets(path: Optional[str] = None) -> list:
         if importlib.util.find_spec('yaml') is None:
             return []
         import yaml
+
         with open(path, 'r', encoding='utf-8') as f:
             doc = yaml.safe_load(f) or {}
         presets = doc.get('presets') if isinstance(doc, dict) else {}

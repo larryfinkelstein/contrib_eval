@@ -2,6 +2,7 @@
 Normalization utility helpers.
 Small helpers to normalize raw payloads into normalize.models entities.
 """
+
 from typing import Dict, Any
 from normalize.models import User, Issue
 
@@ -44,11 +45,24 @@ def normalize_issue(raw: Dict[str, Any]) -> Issue:
     key = raw.get('key') or (raw.get('fields') or {}).get('key') or ''
     fields = raw.get('fields') or {}
     title = fields.get('summary') or raw.get('title') or ''
-    issue_type = (fields.get('issuetype') or {}).get('name') if isinstance(fields.get('issuetype'), dict) else fields.get('issuetype') or raw.get('type') or 'Task'
+    issue_type = (
+        (fields.get('issuetype') or {}).get('name') if isinstance(fields.get('issuetype'), dict) else fields.get('issuetype') or raw.get('type') or 'Task'
+    )
     priority = (fields.get('priority') or {}).get('name') if isinstance(fields.get('priority'), dict) else fields.get('priority')
     story_points = fields.get('customfield_10016') or fields.get('storyPoints') if fields else None
     status_history = []
     assignees = _extract_assignees(fields)
     created_at = fields.get('created') or raw.get('created_at') or None
     resolved_at = fields.get('resolutiondate') or raw.get('resolved_at') or None
-    return Issue(issue_id=str(issue_id), key=key, title=title, type=issue_type, priority=priority, story_points=story_points, status_history=status_history, assignees=assignees, created_at=created_at, resolved_at=resolved_at)
+    return Issue(
+        issue_id=str(issue_id),
+        key=key,
+        title=title,
+        type=issue_type,
+        priority=priority,
+        story_points=story_points,
+        status_history=status_history,
+        assignees=assignees,
+        created_at=created_at,
+        resolved_at=resolved_at,
+    )

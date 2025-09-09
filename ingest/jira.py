@@ -3,6 +3,7 @@ Simple Jira ingestion client used by the CLI/evaluator.
 The implementations are lightweight: they return lists of dicts from the Jira REST API when credentials are provided,
 but fall back to empty lists when tokens are missing to keep tests isolated.
 """
+
 from typing import List, Dict, Any, Optional
 import requests
 from storage.cache import rate_limited_get, Cache
@@ -30,11 +31,7 @@ class JiraClient:
         """
         if not self.token:
             return []
-        jql = (
-            f'project = {self.project_key} AND '
-            f'(assignee = "{user}" OR reporter = "{user}") AND '
-            f'created >= "{start_date}" AND created <= "{end_date}"'
-        )
+        jql = f'project = {self.project_key} AND ' f'(assignee = "{user}" OR reporter = "{user}") AND ' f'created >= "{start_date}" AND created <= "{end_date}"'
         url = f"{self.base_url}/search"
         issues: List[Dict[str, Any]] = []
         start_at = 0

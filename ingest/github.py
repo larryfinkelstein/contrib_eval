@@ -2,6 +2,7 @@
 Minimal GitHub ingestion client used by evaluator and tests.
 Provides a safe default (empty lists) when no token is supplied to keep tests deterministic.
 """
+
 from typing import List, Dict, Any, Optional
 import requests
 from storage.cache import rate_limited_get, Cache

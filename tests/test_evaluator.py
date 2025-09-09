@@ -2,6 +2,7 @@
 Unit tests for the evaluator logic in the contribution evaluation utility.
 Covers edge cases and typical scenarios for Jira, Confluence, and GitHub data aggregation.
 """
+
 import unittest
 from scoring.metrics import (
     convert_jira_issues_to_events,
@@ -49,11 +50,7 @@ class TestEvaluator(unittest.TestCase):
         conf_raw = conf.get_user_pages("testuser", "2025-01-01", "2025-01-31")
         gh_raw = gh.get_user_contributions("testuser", "2025-01-01", "2025-01-31")
 
-        events = (
-            convert_jira_issues_to_events(jira_raw)
-            + convert_confluence_pages_to_events(conf_raw)
-            + convert_github_items_to_events(gh_raw)
-        )
+        events = convert_jira_issues_to_events(jira_raw) + convert_confluence_pages_to_events(conf_raw) + convert_github_items_to_events(gh_raw)
         res = compute_metrics(events)
         result = res.get('evaluation_result')
 
@@ -69,32 +66,20 @@ class TestEvaluator(unittest.TestCase):
         """
         Test evaluation with mixed contributions from all sources.
         """
+
         class MockJiraClientLocal:
             def get_user_issues(self, user, start, end):
-                return [{
-                    'fields': {
-                        'issuetype': {'name': 'Bug'},
-                        'summary': 'Fix login issue',
-                        'created': '2025-01-10',
-                        'timespent': 7200
-                    }
-                }]
+                return [{'fields': {'issuetype': {'name': 'Bug'}, 'summary': 'Fix login issue', 'created': '2025-01-10', 'timespent': 7200}}]
 
         class MockConfluenceClientLocal:
             def get_user_pages(self, user, start, end):
-                return [{
-                    'title': 'API Documentation',
-                    'history': {'createdDate': '2025-01-15', 'createdBy': {'username': user}},
-                    'version': {'when': '2025-01-15'}
-                }]
+                return [
+                    {'title': 'API Documentation', 'history': {'createdDate': '2025-01-15', 'createdBy': {'username': user}}, 'version': {'when': '2025-01-15'}}
+                ]
 
         class MockGitHubClientLocal:
             def get_user_contributions(self, user, start, end):
-                return [{
-                    'pull_request': True,
-                    'title': 'Add OAuth support',
-                    'created_at': '2025-01-20'
-                }]
+                return [{'pull_request': True, 'title': 'Add OAuth support', 'created_at': '2025-01-20'}]
 
         jira = MockJiraClientLocal()
         conf = MockConfluenceClientLocal()
@@ -119,23 +104,13 @@ class TestEvaluator(unittest.TestCase):
         """
         Test evaluation with high complexity and multiple bugs.
         """
+
         class MockJiraClientLocal:
             def get_user_issues(self, user, start, end):
-                return [{
-                    'fields': {
-                        'issuetype': {'name': 'Story'},
-                        'summary': 'Implement payment gateway',
-                        'created': '2025-01-05',
-                        'timespent': 14400
-                    }
-                }, {
-                    'fields': {
-                        'issuetype': {'name': 'Bug'},
-                        'summary': 'Fix checkout bug',
-                        'created': '2025-01-07',
-                        'timespent': 3600
-                    }
-                }]
+                return [
+                    {'fields': {'issuetype': {'name': 'Story'}, 'summary': 'Implement payment gateway', 'created': '2025-01-05', 'timespent': 14400}},
+                    {'fields': {'issuetype': {'name': 'Bug'}, 'summary': 'Fix checkout bug', 'created': '2025-01-07', 'timespent': 3600}},
+                ]
 
         class MockConfluenceClientLocal:
             def get_user_pages(self, user, start, end):
@@ -143,11 +118,7 @@ class TestEvaluator(unittest.TestCase):
 
         class MockGitHubClientLocal:
             def get_user_contributions(self, user, start, end):
-                return [{
-                    'issue': True,
-                    'title': 'Bug: payment not processed',
-                    'created_at': '2025-01-10'
-                }]
+                return [{'issue': True, 'title': 'Bug: payment not processed', 'created_at': '2025-01-10'}]
 
         jira = MockJiraClientLocal()
         conf = MockConfluenceClientLocal()

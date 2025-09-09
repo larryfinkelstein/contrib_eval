@@ -7,6 +7,7 @@ from unittest.mock import patch, Mock
 
 from storage.cache import Cache, rate_limited_get
 
+
 class TestCacheBehavior(unittest.TestCase):
     def test_cache_set_get(self):
         tmp = tempfile.NamedTemporaryFile(delete=False)
@@ -93,6 +94,6 @@ class TestCacheBehavior(unittest.TestCase):
             except Exception:
                 pass
 
+
 if __name__ == '__main__':
     unittest.main()
-

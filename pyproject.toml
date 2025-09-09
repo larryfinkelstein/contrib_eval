@@ -1,0 +1,8 @@
+[tool.ruff]
+line-length = 160
+exclude = [".git", "__pycache__", "venv", "build", "dist"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 160
+skip-string-normalization = true

@@ -1,6 +1,7 @@
 import unittest
 from correlate.linker import find_issue_keys_in_text, link_events_to_issues
 
+
 class TestLinker(unittest.TestCase):
     def test_find_keys(self):
         text = "Fixed PROJ-123 and addressed PROJ-456 in this change"
@@ -19,6 +20,6 @@ class TestLinker(unittest.TestCase):
         self.assertEqual(links[0].bug_issue_id, 'PROJ-1')
         self.assertEqual(links[0].origin_issue_id, 'evt1')
 
+
 if __name__ == '__main__':
     unittest.main()
-

@@ -5,8 +5,24 @@ from report.renderer import render_markdown, render_csv, render_html
 
 def _make_simple_events():
     # Create a couple of minimal ContributionEvent objects used by compute_metrics
-    e1 = ContributionEvent('e1', 'github', 'commit', '2025-01-01T00:00:00Z', 'user1', {'repo': 'r'}, {'description': 'Initial commit', 'complexity': 3, 'time_spent': 1.0, 'bugs_reported': 0})
-    e2 = ContributionEvent('e2', 'jira', 'Bug', '2025-01-02T00:00:00Z', 'user1', {'issue_id': ['ISSUE-1']}, {'description': 'Fix bug', 'complexity': 2, 'time_spent': 2.0, 'bugs_reported': 1})
+    e1 = ContributionEvent(
+        'e1',
+        'github',
+        'commit',
+        '2025-01-01T00:00:00Z',
+        'user1',
+        {'repo': 'r'},
+        {'description': 'Initial commit', 'complexity': 3, 'time_spent': 1.0, 'bugs_reported': 0},
+    )
+    e2 = ContributionEvent(
+        'e2',
+        'jira',
+        'Bug',
+        '2025-01-02T00:00:00Z',
+        'user1',
+        {'issue_id': ['ISSUE-1']},
+        {'description': 'Fix bug', 'complexity': 2, 'time_spent': 2.0, 'bugs_reported': 1},
+    )
     return [e1, e2]
 
 

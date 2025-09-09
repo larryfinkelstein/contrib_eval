@@ -3,26 +3,97 @@
 <head>
   <meta charset="utf-8">
   <title>Contribution Report</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; }
-    .summary { border: 1px solid #ddd; padding: 1rem; border-radius: 6px; }
-    .metric { margin: 0.25rem 0; }
+    :root {
+      --bg:#f7f9fb; --card:#ffffff; --border:#e1e6ee; --accent:#2b7cff; --muted:#6b7280;
+    }
+    body { font-family: Inter, Roboto, Arial, sans-serif; background: var(--bg); color:#0f1724; margin: 1.5rem; }
+    header { display:flex; align-items:center; gap:1rem; margin-bottom:1rem }
+    h1 { margin:0; font-size:1.5rem }
+    .meta { color:var(--muted); font-size:0.9rem }
+    .metrics { margin:1rem 0; padding:0.75rem; background:linear-gradient(90deg, #fff, #fbfdff); border:1px solid var(--border); border-radius:8px }
+    .users { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:1rem; margin-top:1rem }
+    .user-card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:0.75rem; box-shadow: 0 1px 2px rgba(16,24,40,0.04) }
+    .user-card h2 { margin:0 0 0.5rem 0; font-size:1.05rem }
+    .metric { display:flex; justify-content:space-between; padding:0.15rem 0; font-size:0.95rem }
+    .small { font-size:0.85rem; color:var(--muted) }
+    .links { margin-top:0.5rem; font-size:0.9rem }
+    .links li { margin:0.25rem 0 }
+    footer { margin-top:1.5rem; color:var(--muted); font-size:0.85rem }
   </style>
 </head>
 <body>
-  <h1>Contribution Summary</h1>
-  <div class="summary">
-    <h2>User Summary</h2>
-    <div class="metric"><strong>Involvement:</strong> {{ evaluation.involvement }}</div>
-    <div class="metric"><strong>Significance:</strong> {{ evaluation.significance }}</div>
-    <div class="metric"><strong>Effectiveness:</strong> {{ evaluation.effectiveness }}</div>
-    <div class="metric"><strong>Complexity:</strong> {{ evaluation.complexity }}</div>
-    <div class="metric"><strong>Time Required:</strong> {{ evaluation.time_required }} hours</div>
-    <div class="metric"><strong>Bugs and Fixes:</strong> {{ evaluation.bugs_and_fixes }}</div>
-  </div>
-  {% if metrics %}
-  <h3>Raw Metrics</h3>
-  <pre>{{ metrics | tojson(indent=2) }}</pre>
+  <header>
+    {% if evaluation and (not users) %}
+    <h1>Contribution Summary</h1>
+    {% else %}
+    <h1>Contribution Report</h1>
+    {% endif %}
+    <div class="meta">{% if generated_at %}Generated: {{ generated_at }}{% endif %}{% if scope %} &middot; Scope: {{ scope }}{% endif %}</div>
+  </header>
+
+  {% if summary %}
+  <section class="metrics">
+    <h3 style="margin:0 0 0.5rem 0">Summary</h3>
+    <div class="small">Score: <strong>{{ summary.score }}</strong></div>
+    {% if metrics %}
+    <pre style="margin:0; background:transparent; border:0; padding:0">{{ metrics | tojson(indent=2) }}</pre>
+    {% endif %}
+  </section>
   {% endif %}
+
+  {% if users %}
+  <section class="users">
+    {% for u in users %}
+    <article class="user-card">
+      <h2>{{ u.display_name or u.user_id }}</h2>
+      <div class="small">User ID: {{ u.user_id }}</div>
+      {% if u.evaluation %}
+      <div class="metric"><span>Involvement</span><span>{{ u.evaluation.involvement }}</span></div>
+      <div class="metric"><span>Significance</span><span>{{ u.evaluation.significance | round(2) }}</span></div>
+      <div class="metric"><span>Effectiveness</span><span>{{ u.evaluation.effectiveness | round(2) }}</span></div>
+      <div class="metric"><span>Complexity</span><span>{{ u.evaluation.complexity | round(2) }}</span></div>
+      <div class="metric"><span>Time Required</span><span>{{ u.evaluation.time_required | round(2) }} hrs</span></div>
+      <div class="metric"><span>Bugs & Fixes</span><span>{{ u.evaluation.bugs_and_fixes }}</span></div>
+      {% else %}
+      <div class="small">No evaluation available.</div>
+      {% endif %}
+
+      {% if u.links %}
+      <div class="links">
+        <div class="small">Top Links:</div>
+        <ul>
+          {% for l in u.links %}
+          <li><strong>{{ l.bug_issue_id }}</strong> – {{ l.evidence }} <span class="small">(origin: {{ l.origin_issue_id }})</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% else %}
+  <p>No users provided. Showing evaluation (if any):</p>
+  {% if evaluation %}
+  <section class="users">
+    <article class="user-card">
+      <h2>Evaluation</h2>
+      <div class="metric"><span>Involvement</span><span>{{ evaluation.involvement }}</span></div>
+      <div class="metric"><span>Significance</span><span>{{ evaluation.significance | round(2) }}</span></div>
+      <div class="metric"><span>Effectiveness</span><span>{{ evaluation.effectiveness | round(2) }}</span></div>
+      <div class="metric"><span>Complexity</span><span>{{ evaluation.complexity | round(2) }}</span></div>
+      <div class="metric"><span>Time</span><span>{{ evaluation.time_required }} hrs</span></div>
+      <div class="metric"><span>Bugs</span><span>{{ evaluation.bugs_and_fixes }}</span></div>
+    </article>
+  </section>
+  {% else %}
+  <p>No evaluation data available.</p>
+  {% endif %}
+  {% endif %}
+
+  <footer>
+    Generated by contrib_eval
+  </footer>
 </body>
 </html>
